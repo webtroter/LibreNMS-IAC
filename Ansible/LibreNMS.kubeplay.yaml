@@ -27,7 +27,7 @@ spec:
             name: tz-env
       env:
         - name: LOG_LEVEL
-          value: LOG_DEBUG
+          value: LOG_INFO # LOG_DEBUG
         - name: DB_NAME
           valueFrom:
             configMapKeyRef:
@@ -67,7 +67,7 @@ spec:
       image: docker.io/librenms/librenms:latest
       env:
         - name: LOG_LEVEL
-          value: LOG_DEBUG
+          value: LOG_INFO # LOG_DEBUG
         - name: SIDECAR_DISPATCHER
           value: "1"
         - name: DISPATCHER_NODE_ID
