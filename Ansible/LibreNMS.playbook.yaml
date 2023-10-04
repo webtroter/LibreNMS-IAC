@@ -44,11 +44,28 @@
     librenms_install_root: "/opt/LibreNMS"
   tasks:
     - name: Move the kube
+      loop:
+        - LibreNMS.kubeplay.yaml
+        - LibreNMS.kube
       ansible.builtin.copy:
-        dest: "{{ librenms_install_root }}/LibreNMS.kubeplay.yaml"
-        src: ./LibreNMS.kubeplay.yaml
+        dest: "{{ librenms_install_root }}/{{ item }}"
+        src: "./{{ item }}"
         mode: "0644"
-    - name: Play the kube
-      containers.podman.podman_play:
-        kube_file: "{{ librenms_install_root }}/LibreNMS.kubeplay.yaml"
-        state: started
+    - name: Install the .kube file in the user systemd
+      block:
+        - name: Link the file
+          ansible.builtin.file:
+            path: "$HOME/.config/containers/systemd"
+            state: directory
+            recurse: true
+        - name: Link the file
+          ansible.builtin.file:
+            path: "$HOME/.config/containers/systemd/LibreNMS.kube"
+            state: link
+            src: "{{ librenms_install_root }}/LibreNMS.kube"
+    - name: Reload SystemD
+      ansible.builtin.systemd:
+        scope: user
+        daemon_reload: true
+        name: LibreNMS
+        state: restarted

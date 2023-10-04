@@ -1,0 +1,10 @@
+[Unit]
+
+Description=LibreNMS Stack on Podman
+Before=local-fs.target
+
+[Kube]
+Yaml=/opt/LibreNMS/LibreNMS.kubeplay.yaml
+
+[Install]
+WantedBy=multi-user.target default.target
