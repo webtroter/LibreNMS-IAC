@@ -1,0 +1,21 @@
+{
+    "files.associations": {
+        "terragrunt.hcl": "terraform",
+        "*.tfvars": "terraform",
+        "*.tf": "terraform",
+        "*.tf.override": "terraform",
+    },
+    "[terraform]": {
+        "editor.defaultFormatter": "hashicorp.terraform",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "[terraform-vars]": {
+        "editor.defaultFormatter": "hashicorp.terraform",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "editor.suggest.preview": true,
+    "terraform.experimentalFeatures.prefillRequiredFields": true,
+    "ansible.python.interpreterPath": "/bin/python3"
+}
