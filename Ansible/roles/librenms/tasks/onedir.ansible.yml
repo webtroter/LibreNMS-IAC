@@ -1,0 +1,21 @@
+- name: "Test directory {{ directory }}"
+  ansible.builtin.stat:
+    path: "{{ librenms_install_root }}/{{ directory }}"
+  register: dirstat
+  changed_when: not dirstat.stat.exists
+
+- name: "Create directory {{ directory }}"
+  become_method: ansible.builtin.sudo
+  become: true
+  notify: Run restore context to reload selinux
+  when: not dirstat.stat.exists
+  ansible.builtin.file:
+    path: "{{ librenms_install_root }}/{{ directory }}"
+    state: directory
+    mode: "755"
+    owner: "{{ ansible_real_user_id }}"
+    group: "{{ ansible_real_group_id }}"
+    # seuser: system_u
+    # serole: object_r
+    # setype: container_file_t
+    # selevel: s0

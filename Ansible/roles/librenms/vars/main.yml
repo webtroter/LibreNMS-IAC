@@ -1,0 +1,7 @@
+librenms_install_root: "/opt/LibreNMS"
+directories:
+  - db
+  - rrd
+  - rrd/db
+  - rrd/journal
+  - librenmsdata

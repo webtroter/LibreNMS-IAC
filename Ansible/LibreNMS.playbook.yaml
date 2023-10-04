@@ -1,0 +1,54 @@
+- name: Install Podman
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Gather Packages Facts
+      ansible.builtin.package_facts:
+        manager: auto
+    - name: Podman Install
+      when:
+        - ansible_facts.packages['podman'] is not defined
+      ansible.builtin.include_role:
+        name: podman
+        apply:
+          tags:
+            - podman_fromcopr
+            - podman_install
+    - name: SELinux Tools
+      block:
+        - name: Install System Tools
+          become: true
+          when:
+            - ansible_facts.packages['policycoreutils-python-utils'] is not defined
+          ansible.builtin.package:
+            name:
+              - policycoreutils-python-utils
+              # - python3-policycoreutils
+            state: present
+
+- name: Create the stage
+  hosts: all
+  gather_facts: true
+  vars:
+    librenms_install_root: "/opt/LibreNMS"
+  tasks:
+    - name: Include librenms
+      ansible.builtin.include_role:
+        name: librenms
+
+- name: Play the kube
+  hosts: all
+  gather_facts: true
+  vars:
+    librenms_install_root: "/opt/LibreNMS"
+  tasks:
+    - name: Move the kube
+      ansible.builtin.copy:
+        dest: "{{ librenms_install_root }}/LibreNMS.kubeplay.yaml"
+        src: ./LibreNMS.kubeplay.yaml
+        mode: "0644"
+    - name: Play the kube
+      containers.podman.podman_play:
+        kube_file: "{{ librenms_install_root }}/LibreNMS.kubeplay.yaml"
+        state: started

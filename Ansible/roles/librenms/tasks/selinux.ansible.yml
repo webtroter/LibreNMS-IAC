@@ -1,0 +1,25 @@
+- name: "SELinux Set Context on {{ directory }}"
+  become_method: ansible.builtin.sudo
+  become: true
+  when: directory != 'db'
+  community.general.sefcontext:
+    target: "{{ librenms_install_root }}/{{ directory }}(/.*)?"
+    setype: container_file_t
+    seuser: system_u
+    selevel: s0
+    state: present
+    reload: false
+  notify: Run restore context to reload selinux
+
+
+- name: "SELinux Set Context on {{ directory }}"
+  become_method: ansible.builtin.sudo
+  become: true
+  notify: Run restore context to reload selinux
+  community.general.sefcontext:
+    target: "{{ librenms_install_root }}/db(/.*)?"
+    setype: container_file_t
+    seuser: system_u
+    selevel: "s0:c33,c306"
+    state: present
+    reload: false

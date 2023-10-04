@@ -1,0 +1,241 @@
+# Save the output of this file and use kubectl create -f to import
+# it into Kubernetes.
+#
+# Created with podman-4.8.0-dev-cc8c28eb7
+
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    bind-mount-options: /opt/LibreNMS/db:Z # ,/opt/LibreNMS/rrd/journal:Z,/opt/LibreNMS/rrd/journal:Z
+  creationTimestamp: "2023-10-01T16:57:38Z"
+  labels:
+    app: LibreNMS
+  name: LibreNMS
+spec:
+  securityContext:
+    runAsGroup: 1000
+    runAsUser: 1000
+  containers:
+    - name: librenms
+      hostname: librenms
+      image: docker.io/librenms/librenms:latest
+      envFrom:
+        - configMapRef:
+            name: librenms-env
+        - configMapRef:
+            name: tz-env
+      env:
+        - name: LOG_LEVEL
+          value: LOG_DEBUG
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: mariadb-env
+              key: MARIADB_DATABASE
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: mariadb-env
+              key: MARIADB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: mariadb-env
+              key: MARIADB_PASSWORD
+
+      ports:
+        - containerPort: 8000
+          # hostIP: 192.168.101.109
+          hostPort: 8000
+      securityContext:
+        allowPrivilegeEscalation: true
+        runAsUser: 0
+        runAsGroup: 0
+        capabilities:
+          add:
+            - CAP_NET_ADMIN
+            - CAP_NET_RAW
+      volumeMounts:
+        - mountPath: /data
+          name: opt-LibreNMS-librenmsdata-host-0
+        - mountPath: /data/rrd
+          name: opt-LibreNMS-rrdcached-db-host-0
+
+    - name: dispatcher-sidecar
+      hostname: dispatcher1
+      image: docker.io/librenms/librenms:latest
+      env:
+        - name: LOG_LEVEL
+          value: LOG_DEBUG
+        - name: SIDECAR_DISPATCHER
+          value: "1"
+        - name: DISPATCHER_NODE_ID
+          value: dispatcher1
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: mariadb-env
+              key: MARIADB_DATABASE
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: mariadb-env
+              key: MARIADB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: mariadb-env
+              key: MARIADB_PASSWORD
+      envFrom:
+        - configMapRef:
+            name: librenms-env
+        - configMapRef:
+            name: tz-env
+      securityContext:
+        allowPrivilegeEscalation: true
+        runAsUser: 0
+        runAsGroup: 0
+        capabilities:
+          add:
+            - CAP_NET_ADMIN
+            - CAP_NET_RAW
+      volumeMounts:
+        - mountPath: /data
+          name: opt-LibreNMS-librenmsdata-host-0
+        - mountPath: /data/rrd
+          name: opt-LibreNMS-rrdcached-db-host-0
+
+    #
+    # # # MARIADB
+    #
+    - name: mariadb
+      hostname: mariadb
+      image: docker.io/library/mariadb:11
+      args:
+        - mariadbd
+        - --innodb-file-per-table=1
+        - --lower-case-table-names=0
+        - --character-set-server=utf8mb4
+        - --collation-server=utf8mb4_unicode_ci
+      envFrom:
+        - configMapRef:
+            name: tz-env
+        - configMapRef:
+            name: mariadb-env
+      securityContext:
+        seLinuxOptions:
+          level: s0:c33,c306
+      volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: opt-LibreNMS-db-host-0
+    #
+    # # RRDCacheD ##
+    #
+    - name: rrdcached
+      hostname: rrdcached
+      image: docker.io/crazymax/rrdcached
+      volumeMounts:
+        - mountPath: /data/db
+          name: opt-LibreNMS-rrdcached-db-host-0
+        - mountPath: /data/journal
+          name: opt-LibreNMS-rrdcached-journal-host-0
+      env:
+        - name: LOG_LEVEL
+          value: LOG_DEBUG
+      envFrom:
+        - configMapRef:
+            name: tz-env
+      securityContext:
+        allowPrivilegeEscalation: true
+        runAsUser: 0
+        runAsGroup: 0
+    #
+    # # REDIS
+    #
+    - name: redis
+      image: docker.io/library/redis:5.0-alpine
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+      resources:
+        limits:
+          memory: 512M
+      args:
+        - redis-server
+      envFrom:
+        - configMapRef:
+            name: tz-env
+      volumeMounts:
+        - mountPath: /data
+          name: c48b239fb9c702af04476cbd67daac5e22ead4a29b8dfaf5055ad3533efe7b44-pvc
+
+  volumes:
+    - hostPath:
+        path: /opt/LibreNMS/librenmsdata
+        type: Directory
+      name: opt-LibreNMS-librenmsdata-host-0
+    - hostPath:
+        path: /opt/LibreNMS/db
+        type: Directory
+      name: opt-LibreNMS-db-host-0
+    - hostPath:
+        path: /opt/LibreNMS/rrd/db
+        type: Directory
+      name: opt-LibreNMS-rrdcached-db-host-0
+    - hostPath:
+        path: /opt/LibreNMS/rrd/journal
+        type: Directory
+      name: opt-LibreNMS-rrdcached-journal-host-0
+    - name: c48b239fb9c702af04476cbd67daac5e22ead4a29b8dfaf5055ad3533efe7b44-pvc
+      persistentVolumeClaim:
+        claimName: c48b239fb9c702af04476cbd67daac5e22ead4a29b8dfaf5055ad3533efe7b44
+      metadata:
+        annotations:
+          volume.podman.io/uid: 1000
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: librenms-env
+  labels:
+    app: LibreNMS
+data:
+  DB_HOST: mariadb
+  DB_TIMEOUT: "60"
+  CACHE_DRIVER: redis
+  SESSION_DRIVER: redis
+  REDIS_HOST: redis
+  LIBRENMS_SNMP_COMMUNITY: observium
+
+
+  RRDCACHED_ADDRESS: rrdcached:42217 # According to rrdtool, this is the correct one.
+  RRDCACHED_SERVER: rrdcached:42217 # But LibreNMS needs this one to detect rrdcached
+  APP_DEBUG: "true"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tz-env
+  labels:
+    app: LibreNMS
+data:
+  TZ: America/Toronto
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-env
+  labels:
+    app: LibreNMS
+data:
+  TZ: America/Toronto
+  MARIADB_DATABASE: mariadb # DB_NAME
+  MARIADB_USER: librenms # DB_USER
+  MARIADB_PASSWORD: securepassword # DB_PASSWORD
+  MARIADB_ROOT_PASSWORD: "securerootpasswordformariadb"
+  MARIADB_ALLOW_EMPTY_PASSWORD: "yes"

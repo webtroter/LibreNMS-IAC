@@ -1,0 +1,56 @@
+- name: Gather Packages Facts
+  ansible.builtin.package_facts:
+    manager: auto
+- name: Podman Install
+  when:
+    - ansible_facts.packages['podman'][0] is not defined
+  ansible.builtin.include_role:
+    name: podman
+    apply:
+      tags:
+        - podman_fromcopr
+        - podman_install
+- name: SELinux Tools
+  block:
+    - name: Install System Tools
+      become: true
+      when:
+        - ansible_facts.packages['policycoreutils-python-utils'] is not defined
+      ansible.builtin.package:
+        name:
+          - policycoreutils-python-utils
+          # - python3-policycoreutils
+        state: present
+
+- name: Enable IPTables
+  become: true
+  community.general.modprobe:
+    name: ip-tables
+    persistent: present
+    state: present
+
+- name: Setup SELinux Context
+  ansible.builtin.include_tasks:
+    file: selinux.ansible.yml
+  loop: "{{ directories }}"
+  loop_control:
+    loop_var: directory
+
+- name: Setup SELinux Context
+  ansible.builtin.include_tasks:
+    file: onedir.ansible.yml
+  loop: "{{ directories }}"
+  loop_control:
+    loop_var: directory
+
+- name: Give access to container user on Directories
+  loop: "{{ directories }}"
+  become_method: containers.podman.podman_unshare
+  # become_user: 1000
+  become: true
+  ansible.builtin.file:
+    path: "/opt/LibreNMS/{{ item }}"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    recurse: true

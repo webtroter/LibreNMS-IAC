@@ -1,0 +1,7 @@
+- name: Run restore context to reload selinux
+  become: true
+  become_method: ansible.builtin.sudo
+  ansible.builtin.command:
+    cmd: "restorecon -FRv {{ librenms_install_root }}/{{ item }}"
+  loop: "{{ directories }}"
+  changed_when: true
