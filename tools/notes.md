@@ -30,3 +30,7 @@ podman exec LibreNMS-librenms su librenms -c 'printf "Ping RRDCACHED:"; echo 'PI
 ```sh
 podman logs -f LibreNMS-rrdcached
 ```
+
+# Reset the /opt/LibreNMS
+
+Copy [reset.sh](reset.sh) on the VM and execute it.
