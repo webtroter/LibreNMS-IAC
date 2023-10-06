@@ -42,3 +42,19 @@
   loop: "{{ directories }}"
   loop_control:
     loop_var: directory
+
+- name: Lingering
+  block:
+    - name: Check if user is lingering
+      ansible.builtin.stat:
+        path: "/var/lib/systemd/linger/{{ ansible_real_user_id }}"
+      register: user_lingering
+      when: ansible_real_user_id != "root"
+
+    - name: Enable lingering is needed
+      ansible.builtin.command:
+        cmd: "loginctl enable-linger {{ ansible_real_user_id }}"
+        creates: "/var/lib/systemd/linger/{{ ansible_real_user_id }}"
+      when:
+        - ansible_real_user_id != "root"
+        - not user_lingering.stat.exists
